@@ -10,30 +10,35 @@ struct InputState {
     bool rightMouseDown = false;
 
     std::unordered_map<SDL_Scancode, bool> keysDown;
-}; // Input system for mouse
+}; // Stores mouse position, button states, and keyboard state
 
 InputState input;
 
-bool isDragging = false;              //
-float dragStartX = 0.0f;              // This is all for the drawing 
-float dragStartY = 0.0f;              // of the drag window selector
-SDL_FRect dragRect = {0, 0, 0, 0};    //
+// Drag selection state
+bool isDragging = false;
+float dragStartX = 0.0f;
+float dragStartY = 0.0f;
+SDL_FRect dragRect = {0, 0, 0, 0};
 
 struct Box {
     SDL_FRect rect;
     bool selected = false;
-};
+}; // Represents a selectable/movable object
 
+// Initial test boxes
 std::vector<Box> boxes = {
     {{300, 200, 100, 100}, false},
     {{100, 100, 80, 80}, false},
     {{500, 200, 120, 60}, false}
 };
-int movingBoxIndex = -1;      
+
+// Single object movement state
+int movingBoxIndex = -1;
 bool isMoving = false;
 float grabOffsetX = 0.0f;
 float grabOffsetY = 0.0f;
 
+// Group movement state (Shift + drag)
 bool isGroupMoving = false;
 int prevMouseX = 0;
 int prevMouseY = 0;
@@ -42,7 +47,7 @@ int main(int argc, char *argv[]) {
     if(SDL_Init(SDL_INIT_VIDEO) < 0) {
         std::cout << "SDL failed to initialise" << SDL_GetError() << std::endl;
         return 1;
-    } // Start SDL
+    } // Initialize SDL
 
     SDL_Window* window = SDL_CreateWindow(
         "Testing",
@@ -52,13 +57,13 @@ int main(int argc, char *argv[]) {
 
     if (!window) {
         std::cout << "Window failed to create" << SDL_GetError() << std::endl;
-    } // Checks if window was successfully created
+    }
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     if (!renderer) {
         std::cout << "Renderer failed " << SDL_GetError() << std::endl;
-    } // Creates Renderer and sets render mode to blend
+    } // Create renderer with blending enabled
 
     bool running = true;
     SDL_Event event;
@@ -68,17 +73,20 @@ int main(int argc, char *argv[]) {
 
             switch (event.type) {
 
-                case SDL_EVENT_QUIT:   //For quitting
+                case SDL_EVENT_QUIT:   // Exit application
                     running = false;
                     break;
 
-                case SDL_EVENT_MOUSE_MOTION:  //For mouse movement
+                case SDL_EVENT_MOUSE_MOTION:
                     input.mouseX = event.motion.x;
                     input.mouseY = event.motion.y;
+
+                    // --- Group Movement (Shift + drag) ---
                     if (isGroupMoving) {
                         int dx = input.mouseX - prevMouseX;
                         int dy = input.mouseY - prevMouseY;
 
+                        // Apply movement delta to all selected boxes
                         for (auto& box : boxes) {
                             if (box.selected) {
                                 box.rect.x += dx;
@@ -89,20 +97,25 @@ int main(int argc, char *argv[]) {
                         prevMouseX = input.mouseX;
                         prevMouseY = input.mouseY;
                     }
+
+                    // --- Single Box Movement ---
                     else if (isMoving && movingBoxIndex != -1) {
                         auto& box = boxes[movingBoxIndex];
 
                         box.rect.x = input.mouseX - grabOffsetX;
                         box.rect.y = input.mouseY - grabOffsetY;
                     }
+
+                    // --- Drag Selection Box ---
                     else if (isDragging) {
                         float x = dragStartX;
                         float y = dragStartY;
                         float w = input.mouseX - dragStartX;
                         float h = input.mouseY - dragStartY;
 
-                        if (w < 0) {x += w; w = -w;}
-                        if (h < 0) {y += h; h = -h;}
+                        // Normalize rectangle so width/height are always positive
+                        if (w < 0) { x += w; w = -w; }
+                        if (h < 0) { y += h; h = -h; }
 
                         dragRect.x = x;
                         dragRect.y = y;
@@ -111,17 +124,18 @@ int main(int argc, char *argv[]) {
                     }
                     break;
 
-                case SDL_EVENT_MOUSE_BUTTON_DOWN:  //For mouse button down
-                    input.mouseX = event.button.x;
+                case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                    input.mouseX = event.button.x; // Ensure accurate mouse position at click
                     input.mouseY = event.button.y;
-                    
+
                     if (event.button.button == SDL_BUTTON_LEFT) {
                         input.leftMouseDown = true;
                         std::cout << "Left down\n";
 
                         bool clickedOnBox = false;
                         bool clickedOnAnyBox = false;
-                        
+
+                        // Check if mouse is inside any box (top-most first)
                         for (int i = (int)boxes.size() -1; i>= 0; --i) {
                             auto& box = boxes[i];
 
@@ -134,27 +148,30 @@ int main(int argc, char *argv[]) {
                             if (inside) {
                                 clickedOnAnyBox = true;
 
-                                if (box.selected) { 
+                                if (box.selected) {
                                     bool shiftHeld = input.keysDown[SDL_SCANCODE_LSHIFT];
 
                                     if (shiftHeld) {
-                                        //Group move
+                                        // Start group movement
                                         isGroupMoving = true;
                                         prevMouseX = input.mouseX;
                                         prevMouseY = input.mouseY;
                                     } else {
-                                        //single move
+                                        // Start single box movement
                                         isMoving = true;
                                         movingBoxIndex = i;
 
                                         grabOffsetX = input.mouseX - box.rect.x;
                                         grabOffsetY = input.mouseY - box.rect.y;
                                     }
+
                                     clickedOnBox = true;
                                     break;
                                 }
                             }
-                        } 
+                        }
+
+                        // Start drag selection if clicking empty space
                         if (!clickedOnAnyBox) {
                             isDragging = true;
 
@@ -163,37 +180,42 @@ int main(int argc, char *argv[]) {
 
                             dragRect = {dragStartX, dragStartY, 0, 0};
                         }
-                    } else if (event.button.button == SDL_BUTTON_RIGHT) {
+                    }
+                    else if (event.button.button == SDL_BUTTON_RIGHT) { // Right click press
                         input.rightMouseDown = true;
                         std::cout << "Right down\n";
                     }
                     break;
-                    
-                case SDL_EVENT_MOUSE_BUTTON_UP:  //For mouse button up
-                    input.mouseX = event.button.x;
+
+                case SDL_EVENT_MOUSE_BUTTON_UP:
+                    input.mouseX = event.button.x; // Ensure accurate mouse position at release
                     input.mouseY = event.button.y;
 
                     if (event.button.button == SDL_BUTTON_LEFT) {
                         input.leftMouseDown = false;
-                        
+
+                        // Reset movement states
                         isMoving = false;
                         isGroupMoving = false;
                         movingBoxIndex = -1;
                         std::cout << "Left up\n";
 
+                        // Apply selection if dragging
                         if (isDragging){
                             for (auto& box : boxes) {
-                                bool overlap = 
+                                bool overlap =
                                     box.rect.x < dragRect.x + dragRect.w &&
                                     box.rect.x + box.rect.w > dragRect.x &&
                                     box.rect.y < dragRect.y + dragRect.h &&
                                     box.rect.y + box.rect.h > dragRect.y;
+
                                 box.selected = overlap;
                             }
                         }
 
                         isDragging = false;
-                    } else if (event.button.button == SDL_BUTTON_RIGHT) {
+                    }
+                    else if (event.button.button == SDL_BUTTON_RIGHT) { // Right click release
                         input.rightMouseDown = false;
                         std::cout << "Right up\n";
                     }
@@ -201,22 +223,21 @@ int main(int argc, char *argv[]) {
 
                 case SDL_EVENT_KEY_DOWN:
                     if (!event.key.repeat) {
-                        input.keysDown[event.key.scancode] = true;
+                        input.keysDown[event.key.scancode] = true; // Track key press (e.g. Shift)
                     }
                     break;
-                    
-                case SDL_EVENT_KEY_UP:
-                    input.keysDown[event.key.scancode] = false;
-                    break;
-                    
-            }   
 
+                case SDL_EVENT_KEY_UP:
+                    input.keysDown[event.key.scancode] = false; // Track key release
+                    break;
+            }
         }
 
-        SDL_SetRenderDrawColor(renderer, 0, 100, 0, 255); //Colour for window
-        SDL_RenderClear(renderer); //clears renderer
+        SDL_SetRenderDrawColor(renderer, 0, 100, 0, 255); // Background
+        SDL_RenderClear(renderer);
 
-        for (auto& box : boxes) { //For rendering multiple boxes and sets color per state
+        // Render all boxes (color indicates selection state)
+        for (auto& box : boxes) {
             if (box.selected) {
                 SDL_SetRenderDrawColor(renderer, 200, 50, 50, 255);
             } else {
@@ -225,9 +246,10 @@ int main(int argc, char *argv[]) {
             SDL_RenderFillRect(renderer, &box.rect);
         }
 
-        SDL_SetRenderDrawColor(renderer, 5, 5, 5, 80); //Colour for drag box
+        // Render drag selection rectangle
+        SDL_SetRenderDrawColor(renderer, 5, 5, 5, 80);
         if (isDragging) {
-            SDL_RenderFillRect(renderer, &dragRect); //Renders only if dragging
+            SDL_RenderFillRect(renderer, &dragRect);
         }
 
         SDL_RenderPresent(renderer);
