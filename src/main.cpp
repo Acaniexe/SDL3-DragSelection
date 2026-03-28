@@ -34,6 +34,10 @@ bool isMoving = false;
 float grabOffsetX = 0.0f;
 float grabOffsetY = 0.0f;
 
+bool isGroupMoving = false;
+int prevMouseX = 0;
+int prevMouseY = 0;
+
 int main(int argc, char *argv[]) {
     if(SDL_Init(SDL_INIT_VIDEO) < 0) {
         std::cout << "SDL failed to initialise" << SDL_GetError() << std::endl;
@@ -71,7 +75,21 @@ int main(int argc, char *argv[]) {
                 case SDL_EVENT_MOUSE_MOTION:  //For mouse movement
                     input.mouseX = event.motion.x;
                     input.mouseY = event.motion.y;
-                    if (isMoving && movingBoxIndex != -1) {
+                    if (isGroupMoving) {
+                        int dx = input.mouseX - prevMouseX;
+                        int dy = input.mouseY - prevMouseY;
+
+                        for (auto& box : boxes) {
+                            if (box.selected) {
+                                box.rect.x += dx;
+                                box.rect.y += dy;
+                            }
+                        }
+
+                        prevMouseX = input.mouseX;
+                        prevMouseY = input.mouseY;
+                    }
+                    else if (isMoving && movingBoxIndex != -1) {
                         auto& box = boxes[movingBoxIndex];
 
                         box.rect.x = input.mouseX - grabOffsetX;
@@ -117,12 +135,21 @@ int main(int argc, char *argv[]) {
                                 clickedOnAnyBox = true;
 
                                 if (box.selected) { 
-                                    isMoving = true;
-                                    movingBoxIndex = i;
+                                    bool shiftHeld = input.keysDown[SDL_SCANCODE_LSHIFT];
 
-                                    grabOffsetX = input.mouseX - box.rect.x;
-                                    grabOffsetY = input.mouseY - box.rect.y;
+                                    if (shiftHeld) {
+                                        //Group move
+                                        isGroupMoving = true;
+                                        prevMouseX = input.mouseX;
+                                        prevMouseY = input.mouseY;
+                                    } else {
+                                        //single move
+                                        isMoving = true;
+                                        movingBoxIndex = i;
 
+                                        grabOffsetX = input.mouseX - box.rect.x;
+                                        grabOffsetY = input.mouseY - box.rect.y;
+                                    }
                                     clickedOnBox = true;
                                     break;
                                 }
@@ -150,6 +177,7 @@ int main(int argc, char *argv[]) {
                         input.leftMouseDown = false;
                         
                         isMoving = false;
+                        isGroupMoving = false;
                         movingBoxIndex = -1;
                         std::cout << "Left up\n";
 
@@ -169,6 +197,16 @@ int main(int argc, char *argv[]) {
                         input.rightMouseDown = false;
                         std::cout << "Right up\n";
                     }
+                    break;
+
+                case SDL_EVENT_KEY_DOWN:
+                    if (!event.key.repeat) {
+                        input.keysDown[event.key.scancode] = true;
+                    }
+                    break;
+                    
+                case SDL_EVENT_KEY_UP:
+                    input.keysDown[event.key.scancode] = false;
                     break;
                     
             }   
