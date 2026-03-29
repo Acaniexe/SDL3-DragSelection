@@ -34,13 +34,13 @@ SDL_FRect dragRect = {0, 0, 0, 0};
 struct Box {
     SDL_FRect rect;
     bool selected = false;
-    void (*OnClick) ();
+    void (*OnClick) () = nullptr;
 }; // Represents a selectable/movable object
 
 // Initial test boxes
 std::vector<Box> boxes = {
     {{300, 200, 100, 100}, false, pressPrint},
-    {{100, 100, 80, 80}, false, pressPrint},
+    {{100, 100, 80, 80}, false},
     {{500, 200, 120, 60}, false, pressPrint}
 };
 
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
                         float w = input.mouseX - dragStartX;
                         float h = input.mouseY - dragStartY;
 
-                        // Normalize rectangle so width/height are always positive
+                        // Normalise rectangle so width/height are always positive
                         if (w < 0) { x += w; w = -w; }
                         if (h < 0) { y += h; h = -h; }
 
@@ -165,6 +165,7 @@ int main(int argc, char *argv[]) {
                                 bool ctrlHeld =  input.keysDown[SDL_SCANCODE_LCTRL];
 
                                 if (!isDragging && !box.selected && !shiftHeld && !ctrlHeld) {
+                                    //click event for buttons
                                     box.OnClick();
                                 }
 
