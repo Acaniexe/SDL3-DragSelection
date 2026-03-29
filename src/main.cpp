@@ -1,3 +1,10 @@
+//*---goals---*\\
+//1. ctrl + left click to deselect boxs (done)
+//2. add single button inputs for boxs (done)
+//3. improve input handling
+//4. improve render pipeline
+
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <iostream>
@@ -14,6 +21,10 @@ struct InputState {
 
 InputState input;
 
+void pressPrint() {
+    std::cout << "Print" << std::endl;
+}
+
 // Drag selection state
 bool isDragging = false;
 float dragStartX = 0.0f;
@@ -23,13 +34,14 @@ SDL_FRect dragRect = {0, 0, 0, 0};
 struct Box {
     SDL_FRect rect;
     bool selected = false;
+    void (*OnClick) ();
 }; // Represents a selectable/movable object
 
 // Initial test boxes
 std::vector<Box> boxes = {
-    {{300, 200, 100, 100}, false},
-    {{100, 100, 80, 80}, false},
-    {{500, 200, 120, 60}, false}
+    {{300, 200, 100, 100}, false, pressPrint},
+    {{100, 100, 80, 80}, false, pressPrint},
+    {{500, 200, 120, 60}, false, pressPrint}
 };
 
 // Single object movement state
@@ -82,6 +94,7 @@ int main(int argc, char *argv[]) {
                     input.mouseY = event.motion.y;
 
                     // --- Group Movement (Shift + drag) ---
+                    
                     if (isGroupMoving) {
                         int dx = input.mouseX - prevMouseX;
                         int dy = input.mouseY - prevMouseY;
@@ -148,9 +161,22 @@ int main(int argc, char *argv[]) {
                             if (inside) {
                                 clickedOnAnyBox = true;
 
-                                if (box.selected) {
-                                    bool shiftHeld = input.keysDown[SDL_SCANCODE_LSHIFT];
+                                bool shiftHeld = input.keysDown[SDL_SCANCODE_LSHIFT];
+                                bool ctrlHeld =  input.keysDown[SDL_SCANCODE_LCTRL];
 
+                                if (!isDragging && !box.selected && !shiftHeld && !ctrlHeld) {
+                                    box.OnClick();
+                                }
+
+                                if (ctrlHeld) {
+                                    //toggle select
+                                    box.selected = !box.selected;
+                                    clickedOnBox = true;
+                                    break;
+                                }
+
+                                if (box.selected) {
+                                    
                                     if (shiftHeld) {
                                         // Start group movement
                                         isGroupMoving = true;
@@ -233,10 +259,10 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        SDL_SetRenderDrawColor(renderer, 0, 100, 0, 255); // Background
+        SDL_SetRenderDrawColor(renderer, 200, 200, 240, 255); // Background (Lavender)
         SDL_RenderClear(renderer);
 
-        // Render all boxes (color indicates selection state)
+        // Render all boxes (colour indicates selection state)
         for (auto& box : boxes) {
             if (box.selected) {
                 SDL_SetRenderDrawColor(renderer, 200, 50, 50, 255);
@@ -247,7 +273,7 @@ int main(int argc, char *argv[]) {
         }
 
         // Render drag selection rectangle
-        SDL_SetRenderDrawColor(renderer, 5, 5, 5, 80);
+        SDL_SetRenderDrawColor(renderer, 105, 105, 105, 80);
         if (isDragging) {
             SDL_RenderFillRect(renderer, &dragRect);
         }
