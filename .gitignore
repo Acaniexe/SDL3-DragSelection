@@ -1,0 +1,22 @@
+# Build artifacts
+/build/
+/bin/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# MinGW object files and executables
+*.o
+*.obj
+*.exe
+*.dll
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+Makefile
+*.cmake
+
+# VSCode settings (optional)
+.vscode/

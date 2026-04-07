@@ -1,0 +1,1 @@
+A C++/SDL3 prototype demonstrating a simple drag-to-select system for multiple objects. Click and drag to draw a selection rectangle; only boxes overlapping the rectangle become selected. Selected boxes can then be moved individually with the mouse. Designed as a foundation for editors, level design tools, or in-game selection mechanics.
